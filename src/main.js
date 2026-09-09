@@ -102,6 +102,14 @@ async function init() {
     const googleApiKey = import.meta.env.GOOGLE_MAPS_API_KEY;
     if (googleApiKey) window.__GOOGLE_MAPS_API_KEY__ = googleApiKey;
 
+    // Cesium's default star-field skybox is loaded through HTML image
+    // elements. In a sandboxed iframe without `allow-same-origin`, even files
+    // served by this app have an opaque origin; uploading those images to
+    // WebGL throws a SecurityError and stops the entire render loop. Keep the
+    // full skybox for the standalone app, while embedded hosts fall back to
+    // the texture-free sky atmosphere below.
+    const embedded = window.self !== window.top;
+
     // Create the Cesium viewer with minimal chrome
     const viewer = new Cesium.Viewer('cesiumContainer', {
       timeline: false,
@@ -116,6 +124,7 @@ async function init() {
       selectionIndicator: false,
       infoBox: false,
       baseLayer: false,
+      skyBox: embedded ? false : undefined,
       // Visible attribution container — Google Maps / 3D Tiles credits are
       // required by Google's Terms of Service, so they must be shown (styled
       // subtly via #cesium-credits). The credit line stays visible in
