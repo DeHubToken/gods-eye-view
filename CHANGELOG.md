@@ -5,6 +5,10 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in Community presence layer for social-platform hosts, with a public JSON endpoint and a small placement-request bridge. God's Eye View does not collect or store user locations.
+
 ### Fixed
 
 - Mapped-site outages show their scheduled retry countdown and distinguish

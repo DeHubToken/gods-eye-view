@@ -7738,6 +7738,7 @@ export default defineConfig(({ mode }) => {
   const env = { ...process.env };
   const localAllowedHosts = ['localhost', '127.0.0.1', '.local'];
   return {
+    base: process.env.GEV_BASE_PATH || '/',
     plugins: [
       cesium(),
       openSkyProxy(),

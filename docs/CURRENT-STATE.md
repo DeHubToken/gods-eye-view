@@ -2,6 +2,12 @@
 
 Updated: August 24, 2026
 
+## Community presence integration
+
+Social platforms can add an opt-in people layer without forking the globe internals. Send `{ source: 'social-presence-host', type: 'configure', endpoint }` to the frame, or pass an HTTP(S) `presenceEndpoint` query parameter. The endpoint returns either an array or `{ people: [] }`; records accept `id`/`user_id`, `name`/`username`, `latitude`/`lat`, `longitude`/`lon`/`lng`, and optional HTTP(S) `avatar_url` and `profile_url` fields. Responses are capped at 5,000 records, refreshed once per minute, fetched without credentials, and filtered for invalid coordinates and unsafe URLs.
+
+The layer never requests device location or writes user data itself. Its `PLACE ME ON THE MAP` control emits `gev:presence-place-requested` locally and, when embedded, posts `{ source: 'gods-eye-view', type: 'presence-place-requested' }` to its parent. The host owns consent, precision, authentication, retention, and deletion, then sends `{ source: 'social-presence-host', type: 'refresh' }` after a successful update.
+
 ## Installations and map-source guidance
 
 - On an uncached Overpass failure, mapped installations keep their existing

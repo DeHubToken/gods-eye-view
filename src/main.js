@@ -14,6 +14,7 @@ import bikeshareLayer from './data/bikeshare.js';
 import aisLiveVesselsLayer from './data/aisLiveVessels.js';
 import militaryInstallationsLayer from './data/militaryInstallations.js';
 import militaryAwarenessLayer from './data/militaryAwareness.js';
+import communityPresenceLayer from './data/communityPresence.js';
 import localDataLayers from './data/localLayers.js';
 import { LAYER_STATE_REGISTRY } from './data/layerState.js';
 import { registerDataCredits } from './data/dataCredits.js';
@@ -36,6 +37,26 @@ import { initKeySetup } from './keySetup.js';
 import { loadPhotorealisticTileset } from './mapStartup.js';
 
 initLogoGaze();
+
+function installEmbedExit() {
+  if (window.parent === window) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '← ARCADE';
+  button.setAttribute('aria-label', 'Leave the globe');
+  Object.assign(button.style, {
+    position: 'fixed', top: '12px', left: '12px', zIndex: '10000',
+    border: '1px solid rgba(255,255,255,.3)', borderRadius: '999px',
+    background: 'rgba(0,0,0,.7)', color: '#fff', padding: '8px 12px',
+    font: '600 11px system-ui', letterSpacing: '.08em', cursor: 'pointer',
+  });
+  button.addEventListener('click', () => {
+    window.parent.postMessage({ source: 'gods-eye-view', type: 'exit' }, '*');
+  });
+  document.body.appendChild(button);
+}
+
+installEmbedExit();
 
 /**
  * Extract a human-readable error message from any thrown value.
@@ -220,6 +241,7 @@ async function init() {
     dataManager.register(aisLiveVesselsLayer);
     dataManager.register(militaryInstallationsLayer);
     dataManager.register(militaryAwarenessLayer);
+    dataManager.register(communityPresenceLayer);
     militaryAwarenessLayer.attachDataManager(dataManager);
     for (const layer of localDataLayers) {
       dataManager.register(layer);
