@@ -47,6 +47,7 @@ try {
     throw error;
   }
   await frame.click('#dehub-community summary');
+  await frame.waitForSelector('[data-first-run-choice="explore"]', { visible: true, timeout: 30000 });
   await frame.click('[data-first-run-choice="explore"]');
   assert.match(await frame.$eval('#dehub-community', (element) => element.textContent), /25 km/);
   assert.equal(await frame.$$eval('#dehub-community button', (buttons) => buttons.length), 6);
@@ -68,6 +69,7 @@ try {
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   frame = page.frames().find((entry) => entry.url().includes('/gods-eye-game/'));
   await frame.waitForSelector('#dehub-community', { timeout: 60000 });
+  await frame.waitForSelector('[data-first-run-choice="explore"]', { visible: true, timeout: 30000 });
   await frame.click('[data-first-run-choice="explore"]');
   await frame.click('#dehub-community summary');
   const box = await frame.$eval('#dehub-community', (element) => ({ width: element.offsetWidth, left: element.getBoundingClientRect().left }));
