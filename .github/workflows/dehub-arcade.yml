@@ -18,6 +18,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx vite build --config vite.dehub.config.js
+      - name: Place Cesium beside the subpath entry
+        run: |
+          mv dist/gods-eye-game/cesium dist/cesium
+          rmdir dist/gods-eye-game
       - name: Exclude non-commercial event assets
         run: rm -rf dist/events/bhote-koshi-2026
       - run: node scripts/qa-dehub-arcade.mjs
