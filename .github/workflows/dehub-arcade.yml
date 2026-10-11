@@ -1,0 +1,33 @@
+name: DeHub arcade bundle
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: npm
+      - run: npm ci
+      - run: npx vite build --config vite.dehub.config.js
+      - name: Exclude non-commercial event assets
+        run: rm -rf dist/events/bhote-koshi-2026
+      - run: node scripts/qa-dehub-arcade.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dehub-globe-screenshots
+          path: dehub-*.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dehub-gods-eye
+          path: dist/
+          retention-days: 14
