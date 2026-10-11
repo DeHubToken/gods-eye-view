@@ -14,6 +14,27 @@ import {
 // Accept only that source blob as the one-time bootstrap; any other published
 // source without a ledger must fail closed rather than risk losing a token.
 const PRE_LEDGER_LAYER_STATE_BLOB = 'e559a4c40191512dcefb83134958a3bfd4a98a69';
+// The fork's September build predates the upstream ledger. Its exact source
+// blob pins the assignments that existing DeHub share links already use.
+const DEHUB_PRE_LEDGER_BLOB = 'eb68c14e7f9d2fea631943ebfe571a18267283fe';
+const DEHUB_PRE_LEDGER_TOKENS = Object.freeze({
+  'ais-live-vessels': 'a',
+  bikeshare: 'b',
+  cctv: 'c',
+  earthquakes: 'e',
+  flights: 'f',
+  'local-dams': 'q',
+  'local-datacenters': 'd',
+  'local-firms': 'w',
+  military: 'm',
+  'military-awareness': 'g',
+  'military-installations': 'i',
+  radio: 'r',
+  'rocket-launches': 'x',
+  satellites: 's',
+  'telegeography-submarine-cables': 'u',
+  traffic: 't',
+});
 // This snapshot belongs to the verified published blob above, not to the PR's
 // editable legacy map. Otherwise a candidate could redefine both its ledger
 // and its comparison baseline before the first ledger reaches main.
@@ -76,6 +97,7 @@ export function readPublishedLayerStateReservations(
   }
   if (!hasLedger) {
     const sourceBlob = git(['rev-parse', `${commit}:${SOURCE_PATH}`], cwd);
+    if (sourceBlob === DEHUB_PRE_LEDGER_BLOB) return DEHUB_PRE_LEDGER_TOKENS;
     if (sourceBlob !== PRE_LEDGER_LAYER_STATE_BLOB) {
       throw new Error(
         'Published base has no recognizable layer-state token ledger',
