@@ -9,7 +9,7 @@ const mime = { '.js': 'text/javascript', '.css': 'text/css', '.json': 'applicati
 const server = createServer(async (req, res) => {
   if (req.url === '/') {
     res.setHeader('Content-Type', 'text/html');
-    res.end('<iframe style="width:100vw;height:100vh" sandbox="allow-scripts allow-pointer-lock allow-downloads" src="/gods-eye-game/index.html"></iframe>');
+    res.end(`<meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0}iframe{width:100vw;height:100vh;border:0}</style><iframe sandbox="allow-scripts allow-pointer-lock allow-downloads" src="/gods-eye-game/index.html"></iframe><script>window.requests=[];window.addEventListener('message',function(event){if(event.data?.source!=='gods-eye-view'||!event.data.requestId)return;window.requests.push(event.data);event.source.postMessage({source:'social-presence-host',type:'presence-result',requestId:event.data.requestId,error:'Sign in to place yourself on the globe.'},'*')});</script>`);
     return;
   }
   const pathname = new URL(req.url, 'http://localhost').pathname;
@@ -36,7 +36,7 @@ try {
     } else void request.continue();
   });
   await page.goto('http://127.0.0.1:4174');
-  const frame = page.frames().find((entry) => entry.url().includes('/gods-eye-game/'));
+  let frame = page.frames().find((entry) => entry.url().includes('/gods-eye-game/'));
   assert.ok(frame);
   try {
     await frame.waitForSelector('#dehub-community', { timeout: 60000 });
@@ -47,11 +47,31 @@ try {
     throw error;
   }
   await frame.click('#dehub-community summary');
+  await frame.click('[data-first-run-choice="explore"]');
   assert.match(await frame.$eval('#dehub-community', (element) => element.textContent), /25 km/);
   assert.equal(await frame.$$eval('#dehub-community button', (buttons) => buttons.length), 6);
+  await frame.click('#dehub-community [data-action="remove"]');
+  await frame.waitForFunction(() => document.querySelector('#dehub-community [data-status]').textContent.includes('Sign in'));
+  assert.equal(await page.evaluate(() => window.requests.at(-1).type), 'presence-remove-requested');
+  await frame.click('#dehub-community [data-action="locate"]');
+  await frame.waitForFunction(() => !document.querySelector('#dehub-community [data-action="locate"]').disabled);
+  assert.equal(await page.evaluate(() => window.requests.at(-1).type), 'presence-place-requested');
+  await frame.click('#dehub-community [data-action="choose"]');
+  await page.mouse.click(640, 400);
+  await frame.waitForSelector('#dehub-community [data-confirm]:not([hidden])');
+  await frame.click('#dehub-community [data-action="save"]');
+  await frame.waitForFunction(() => !document.querySelector('#dehub-community [data-action="save"]').disabled);
+  const pin = await page.evaluate(() => window.requests.at(-1));
+  assert.ok(Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude));
   assert.deepEqual(errors, []);
   await page.screenshot({ path: 'dehub-desktop.png' });
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  frame = page.frames().find((entry) => entry.url().includes('/gods-eye-game/'));
+  await frame.waitForSelector('#dehub-community', { timeout: 60000 });
+  await frame.click('[data-first-run-choice="explore"]');
+  await frame.click('#dehub-community summary');
+  const box = await frame.$eval('#dehub-community', (element) => ({ width: element.offsetWidth, left: element.getBoundingClientRect().left }));
+  assert.ok(box.width + box.left <= 390);
   await page.screenshot({ path: 'dehub-mobile.png' });
   console.log('Sandboxed globe boots with community placement controls on desktop and phone.');
 } finally {
