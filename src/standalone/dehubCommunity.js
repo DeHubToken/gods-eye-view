@@ -1,4 +1,8 @@
 import * as Cesium from 'cesium';
+import {
+  setOverlayEntries,
+  clearOverlaySource,
+} from '../overlays/worldOverlay.js';
 import { governorRequestRender } from '../renderGovernor.js';
 
 const ENDPOINT =
@@ -25,15 +29,42 @@ export function installCommunityMap(viewer) {
     <button type="button" data-action="locate">Use my location</button>
     <button type="button" data-action="remove">Remove my pin</button>
     <button type="button" data-action="refresh">Refresh map</button></div>
+    <label>Find a member <select data-members aria-label="Find a member"><option value="">Choose a member</option></select></label>
     <p data-status role="status" aria-live="polite"></p>
     <div data-confirm hidden><p data-location></p><button type="button" data-action="save">Place me here</button>
     <button type="button" data-action="cancel">Cancel</button></div>`;
   const style = document.createElement('style');
-  style.textContent = `#dehub-community{position:fixed;left:12px;bottom:76px;z-index:10000;width:min(310px,calc(100vw - 24px));padding:12px;border:1px solid #ffffff40;border-radius:12px;background:#101419f2;color:#fff;font:13px/1.5 system-ui;box-sizing:border-box}#dehub-community summary{cursor:pointer;font-weight:600}#dehub-community p{margin:10px 0}#dehub-community button{padding:9px 12px;border:1px solid #ffffff50;border-radius:7px;background:#283340;color:#fff;font:inherit;cursor:pointer;min-height:40px}#dehub-community button:disabled{opacity:.5;cursor:wait}#dehub-community button:focus-visible,#dehub-community summary:focus-visible{outline:2px solid #b9e1ff;outline-offset:3px}#dehub-community .community-actions{display:flex;gap:6px;flex-wrap:wrap}#dehub-community [hidden]{display:none}`;
+  style.textContent = `#dehub-community{position:fixed;left:12px;bottom:76px;z-index:10000;width:min(310px,calc(100vw - 24px));padding:12px;border:1px solid #ffffff40;border-radius:12px;background:#101419f2;color:#fff;font:13px/1.5 system-ui;box-sizing:border-box}#dehub-community summary{cursor:pointer;font-weight:600}#dehub-community p{margin:10px 0}#dehub-community button{padding:9px 12px;border:1px solid #ffffff50;border-radius:7px;background:#283340;color:#fff;font:inherit;cursor:pointer;min-height:40px}#dehub-community button:disabled{opacity:.5;cursor:wait}#dehub-community button:focus-visible,#dehub-community summary:focus-visible{outline:2px solid #b9e1ff;outline-offset:3px}#dehub-community .community-actions{display:flex;gap:6px;flex-wrap:wrap}#dehub-community select{width:100%;max-width:100%;margin-top:6px;padding:8px;background:#283340;color:white;border:1px solid #ffffff50;border-radius:7px}#dehub-community label{display:block;margin-top:10px}#dehub-community [hidden]{display:none}`;
   document.head.append(style);
   document.body.append(panel);
   const status = panel.querySelector('[data-status]');
   const confirm = panel.querySelector('[data-confirm]');
+  const members = panel.querySelector('[data-members]');
+  members.addEventListener('change', () => {
+    const entity = source.entities.getById(members.value);
+    if (!entity) return;
+    const position = entity.position.getValue(viewer.clock.currentTime);
+    const coordinates = Cesium.Cartographic.fromCartesian(position);
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromRadians(
+        coordinates.longitude,
+        coordinates.latitude,
+        150000,
+      ),
+    });
+    setStatus(entity.name);
+    setOverlayEntries('dehub-community-selected', [
+      {
+        id: entity.id,
+        position,
+        title: entity.name,
+        variant: 'selected',
+        selected: true,
+        protected: true,
+        horizonCull: true,
+      },
+    ]);
+  });
   const source = new Cesium.CustomDataSource('dehub-community');
   viewer.dataSources.add(source);
   const picker = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
@@ -89,10 +120,19 @@ export function installCommunityMap(viewer) {
         throw new Error('Invalid community response');
       if (disposed) return;
       source.entities.removeAll();
-      for (const person of payload.people.slice(0, 5000)) {
+      clearOverlaySource('dehub-community-selected');
+      members.replaceChildren(new Option('Choose a member', ''));
+      const entries = [];
+      for (const person of payload.people) {
         if (!validCoordinates(person) || typeof person.id !== 'string')
           continue;
         if (source.entities.getById(person.id)) continue;
+        members.add(
+          new Option(
+            String(person.name || 'Community member').slice(0, 80),
+            person.id,
+          ),
+        );
         source.entities.add({
           id: person.id,
           name: String(person.name || 'Community member').slice(0, 80),
@@ -107,19 +147,19 @@ export function installCommunityMap(viewer) {
             outlineWidth: 2,
             heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           },
-          label: {
-            text: String(person.name || 'Community member').slice(0, 80),
-            font: '13px system-ui',
-            pixelOffset: new Cesium.Cartesian2(0, -20),
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            outlineWidth: 3,
-            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
-              0,
-              2000000,
-            ),
-          },
         });
       }
+      for (const entity of source.entities.values)
+        entries.push({
+          id: entity.id,
+          position: entity.position.getValue(viewer.clock.currentTime),
+          title: entity.name,
+          variant: 'label',
+          horizonCull: true,
+          maxDistance: 2000000,
+          accent: '#00ffff',
+        });
+      setOverlayEntries('dehub-community', entries);
       governorRequestRender();
       if (!pending && !choosing)
         setStatus(`${source.entities.values.length} community pins`);
@@ -222,7 +262,7 @@ export function installCommunityMap(viewer) {
     exit.style.cssText =
       'position:fixed;top:12px;left:12px;z-index:10000;padding:10px 14px;border-radius:20px;background:#101419;color:white;border:1px solid #ffffff50;cursor:pointer';
     exit.onclick = () =>
-      window.parent.postMessage({ source: SOURCE, type: 'exit' }, '*');
+      window.parent.postMessage({ source: 'gods-eye-view', type: 'exit' }, '*');
     document.body.append(exit);
   }
   void refresh();
@@ -234,6 +274,8 @@ export function installCommunityMap(viewer) {
       clearTimeout(timeout);
       window.removeEventListener('message', onMessage);
       picker.destroy();
+      clearOverlaySource('dehub-community');
+      clearOverlaySource('dehub-community-selected');
       if (!viewer.isDestroyed()) viewer.dataSources.remove(source, true);
       panel.remove();
       style.remove();
