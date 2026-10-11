@@ -28,6 +28,7 @@ try {
   await page.setViewport({ width: 1280, height: 850 });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') console.log('Browser:', message.text()); });
   await page.setRequestInterception(true);
   page.on('request', (request) => {
     if (request.url().includes('/functions/v1/map-presence')) {
@@ -37,7 +38,14 @@ try {
   await page.goto('http://127.0.0.1:4174');
   const frame = page.frames().find((entry) => entry.url().includes('/gods-eye-game/'));
   assert.ok(frame);
-  await frame.waitForSelector('#dehub-community', { timeout: 90000 });
+  try {
+    await frame.waitForSelector('#dehub-community', { timeout: 60000 });
+  } catch (error) {
+    console.log('Page errors:', errors);
+    console.log('Startup:', await frame.$eval('body', (body) => body.innerText.slice(-5000)));
+    await page.screenshot({ path: 'dehub-startup-failure.png' });
+    throw error;
+  }
   await frame.click('#dehub-community summary');
   assert.match(await frame.$eval('#dehub-community', (element) => element.textContent), /25 km/);
   assert.equal(await frame.$$eval('#dehub-community button', (buttons) => buttons.length), 6);
