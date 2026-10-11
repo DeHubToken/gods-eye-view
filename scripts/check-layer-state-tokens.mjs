@@ -97,7 +97,19 @@ export function readPublishedLayerStateReservations(
   }
   if (!hasLedger) {
     const sourceBlob = git(['rev-parse', `${commit}:${SOURCE_PATH}`], cwd);
-    if (sourceBlob === DEHUB_PRE_LEDGER_BLOB) return DEHUB_PRE_LEDGER_TOKENS;
+    if (sourceBlob === DEHUB_PRE_LEDGER_BLOB) {
+      // This sync adopts upstream's already-published assignments. They were
+      // allocated across several releases, not all against the old fork.
+      const upstream = {
+        ...PRE_LEDGER_LAYER_STATE_TOKENS,
+        'street-level': '0',
+      };
+      for (const [id, token] of Object.entries(DEHUB_PRE_LEDGER_TOKENS)) {
+        if (upstream[id] !== token)
+          throw new Error(`Upstream changed a published DeHub token: ${id}`);
+      }
+      return upstream;
+    }
     if (sourceBlob !== PRE_LEDGER_LAYER_STATE_BLOB) {
       throw new Error(
         'Published base has no recognizable layer-state token ledger',
